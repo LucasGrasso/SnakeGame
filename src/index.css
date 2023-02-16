@@ -74,6 +74,18 @@ body::-webkit-scrollbar-track {
 
 .text-title {
   font-weight: 600;
-  color: #AEAEAE;
+  color: #48C1E7;
   text-align: center;
+}
+
+.btn-primary {
+  background-color: #48C1E7;
+  color: whitesmoke;
+  border: none;
+  border-radius: 0.25rem;
+  padding: 0.5rem 1rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
 }

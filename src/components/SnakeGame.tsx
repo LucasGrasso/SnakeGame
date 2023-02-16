@@ -1,3 +1,4 @@
+import { disableBodyScroll } from 'body-scroll-lock';
 import { useEffect, useState } from 'react';
 import '../snake.css';
 import { getNewSnakeHead, snakeIsEating, snakeIsEatingItself, snakeIsOutOfBound } from '../utils/SnakeGameUtils';
@@ -12,12 +13,19 @@ type SnakeGameProps = {
 export default function SnakeGame({ width, height }: SnakeGameProps) {
     const [tableState, setTableState] = useState<TableStateDict>({} as TableStateDict);
     const [score, setScore] = useState<number>(0);
-    const [highScore, setHighScore] = useState<string>(JSON.parse(localStorage.getItem('highscore') || '0'));
-    const [originalHighScore, setOriginalHighScore] = useState<string>(JSON.parse(localStorage.getItem('highscore') || '0'));
+    const [highScore, setHighScore] = useState<number>(parseInt(JSON.parse(localStorage.getItem('highscore') || '0')));
+    const [originalHighScore] = useState<number>(parseInt(JSON.parse(localStorage.getItem('highscore') || '0')));
     const [gameOver, setGameOver] = useState<boolean>(false);
     const [direction, setDirection] = useState<string>("");
     const [snakeState, setSnakeState] = useState<Position[]>([]);
     const [foodState, setFoodState] = useState<Position>({ x: 0, y: 0 });
+    const [touchStartX, setTouchStartX] = useState(null)
+    const [touchEndX, setTouchEndX] = useState(null)
+    const [touchStartY, setTouchStartY] = useState(null)
+    const [touchEndY, setTouchEndY] = useState(null)
+    const [intervalMilis, setIntervalMilis] = useState<number>(0);
+
+    disableBodyScroll(document);
 
     const setInitialState = () => {
         const foodStartingPos: string = getRandomPositionString(width, height);
@@ -33,6 +41,42 @@ export default function SnakeGame({ width, height }: SnakeGameProps) {
 
         setSnakeState([parsePosition(snakeStartingPos)]);
         setFoodState(parsePosition(foodStartingPos));
+    }
+
+    // the required distance between touchStart and touchEnd to be detected as a swipe
+    const minSwipeDistance = 40
+
+    const onTouchStart = (e: any) => {
+        e.preventDefault()
+        setTouchEndX(null) // otherwise the swipe is fired even with usual touch events
+        setTouchEndY(null)
+        setTouchStartX(e.targetTouches[0].clientX)
+        setTouchStartY(e.targetTouches[0].clientY)
+    }
+
+    const onTouchMove = (e: any) => {
+        e.preventDefault()
+        setTouchEndX(e.targetTouches[0].clientX)
+        setTouchEndY(e.targetTouches[0].clientY)
+    }
+
+    const onTouchEnd = () => {
+        if (!touchStartX || !touchEndX || !touchStartY || !touchEndY) return
+        const distanceX = touchStartX - touchEndX
+        const isLeftSwipe = distanceX > minSwipeDistance
+        const isRightSwipe = distanceX < -minSwipeDistance
+        const distanceY = touchStartY - touchEndY
+        const isUpSwipe = distanceY > minSwipeDistance
+        const isDownSwipe = distanceY < -minSwipeDistance
+        if (isLeftSwipe && direction !== Directions.RIGHT) {
+            setDirection(Directions.LEFT);
+        } else if (isRightSwipe && direction !== Directions.LEFT) {
+            setDirection(Directions.RIGHT);
+        } else if (isUpSwipe && direction !== Directions.DOWN) {
+            setDirection(Directions.UP);
+        } else if (isDownSwipe && direction !== Directions.UP) {
+            setDirection(Directions.DOWN);
+        }
     }
 
     const handleKeyDown = (e: any) => {
@@ -163,11 +207,12 @@ export default function SnakeGame({ width, height }: SnakeGameProps) {
     }
 
     useEffect(() => {
-        const tick = setInterval(updateGame, 100);
+        const interval = Math.max(100 - (score * 5), 30);
+        const tick = setInterval(updateGame, interval);
         return () => {
             clearInterval(tick);
         }
-    }, [direction, tableState]);
+    }, [direction, tableState, score]);
 
     useEffect(() => {
         setInitialState();
@@ -178,13 +223,8 @@ export default function SnakeGame({ width, height }: SnakeGameProps) {
     }, []);
 
     useEffect(() => {
-        console.log("foodState", foodState);
-    }, [foodState]);
-
-    useEffect(() => {
-        const highScoreInt: number = parseInt(highScore);
-        if (score > highScoreInt) {
-            setHighScore(score.toString());
+        if (score > highScore) {
+            setHighScore(score);
         }
         if (gameOver) {
             localStorage.setItem('highscore', JSON.stringify(highScore));
@@ -193,14 +233,15 @@ export default function SnakeGame({ width, height }: SnakeGameProps) {
 
 
     return (
-        <div>
+        <div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
             {
                 gameOver ? (
                     <div className='flex-col'>
                         <h1 className='text-error'>Game Over</h1>
                         <h3>Score: {score}</h3>
-                        {score > parseInt(originalHighScore) && <h4 className='text-green'>¡Nuevo Record!</h4>}
+                        {score > originalHighScore && <h4 className='text-green'>¡Nuevo Record!</h4>}
                         <h3>High Score: {highScore}</h3>
+                        <button className='btn-primary' onClick={() => { window.location.reload(); }}>Retry</button>
                     </div>
                 ) : (
                     <div className='snake-container' key="snake-container">
