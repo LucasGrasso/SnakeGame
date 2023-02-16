@@ -207,7 +207,7 @@ export default function SnakeGame({ width, height }: SnakeGameProps) {
     }
 
     useEffect(() => {
-        const interval = Math.max(100 - (score * 5), 30);
+        const interval = Math.max(100 - (score * 5), 50);
         const tick = setInterval(updateGame, interval);
         return () => {
             clearInterval(tick);
