@@ -104,7 +104,10 @@ export default function SnakeGame({ width, height }: SnakeGameProps) {
     }
 
     const snakeEat = (snakeHead: Position) => {
-        const newFoodPosition: Position = getRandomPosition(width, height);
+        let newFoodPosition: Position = getRandomPosition(width, height);
+        while (snakeState.includes(newFoodPosition) || foodState === newFoodPosition) {
+            newFoodPosition = getRandomPosition(width, height);
+        }
         setFoodState(newFoodPosition);
         setScore(score + 1);
         setSnakeState([snakeHead].concat(snakeState));
