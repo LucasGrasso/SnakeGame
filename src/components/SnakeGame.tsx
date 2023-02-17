@@ -23,7 +23,6 @@ export default function SnakeGame({ width, height }: SnakeGameProps) {
     const [touchEndX, setTouchEndX] = useState(null)
     const [touchStartY, setTouchStartY] = useState(null)
     const [touchEndY, setTouchEndY] = useState(null)
-    const [intervalMilis, setIntervalMilis] = useState<number>(0);
 
     disableBodyScroll(document);
 
