@@ -13,18 +13,12 @@ type SnakeGameProps = {
 export default function SnakeGame({ width, height }: SnakeGameProps) {
     const [tableState, setTableState] = useState<TableStateDict>({} as TableStateDict);
     const [score, setScore] = useState<number>(0);
-    const [highScore, setHighScore] = useState<number>(parseInt(JSON.parse(localStorage.getItem('highscore') || '0')));
-    const [originalHighScore] = useState<number>(parseInt(JSON.parse(localStorage.getItem('highscore') || '0')));
+    const [highScore, setHighScore] = useState<string>(JSON.parse(localStorage.getItem('highscore') || '0'));
+    const [originalHighScore, setOriginalHighScore] = useState<string>(JSON.parse(localStorage.getItem('highscore') || '0'));
     const [gameOver, setGameOver] = useState<boolean>(false);
     const [direction, setDirection] = useState<string>("");
     const [snakeState, setSnakeState] = useState<Position[]>([]);
     const [foodState, setFoodState] = useState<Position>({ x: 0, y: 0 });
-    const [touchStartX, setTouchStartX] = useState(null)
-    const [touchEndX, setTouchEndX] = useState(null)
-    const [touchStartY, setTouchStartY] = useState(null)
-    const [touchEndY, setTouchEndY] = useState(null)
-
-    disableBodyScroll(document);
 
     const setInitialState = () => {
         const foodStartingPos: string = getRandomPositionString(width, height);
@@ -42,46 +36,8 @@ export default function SnakeGame({ width, height }: SnakeGameProps) {
         setFoodState(parsePosition(foodStartingPos));
     }
 
-    // the required distance between touchStart and touchEnd to be detected as a swipe
-    const minSwipeDistance = 40
-
-    const onTouchStart = (e: any) => {
-        e.preventDefault()
-        setTouchEndX(null) // otherwise the swipe is fired even with usual touch events
-        setTouchEndY(null)
-        setTouchStartX(e.targetTouches[0].clientX)
-        setTouchStartY(e.targetTouches[0].clientY)
-    }
-
-    const onTouchMove = (e: any) => {
-        e.preventDefault()
-        setTouchEndX(e.targetTouches[0].clientX)
-        setTouchEndY(e.targetTouches[0].clientY)
-    }
-
-    const onTouchEnd = () => {
-        if (!touchStartX || !touchEndX || !touchStartY || !touchEndY) return
-        const distanceX = touchStartX - touchEndX
-        const isLeftSwipe = distanceX > minSwipeDistance
-        const isRightSwipe = distanceX < -minSwipeDistance
-        const distanceY = touchStartY - touchEndY
-        const isUpSwipe = distanceY > minSwipeDistance
-        const isDownSwipe = distanceY < -minSwipeDistance
-        if (isLeftSwipe && direction !== Directions.RIGHT) {
-            setDirection(Directions.LEFT);
-        } else if (isRightSwipe && direction !== Directions.LEFT) {
-            setDirection(Directions.RIGHT);
-        } else if (isUpSwipe && direction !== Directions.DOWN) {
-            setDirection(Directions.UP);
-        } else if (isDownSwipe && direction !== Directions.UP) {
-            setDirection(Directions.DOWN);
-        }
-    }
-
     const handleKeyDown = (e: any) => {
-        e.preventDefault();
         const pressedKey = e.key;
-        console.log('tick');
         if (pressedKey === Directions.UP && direction !== Directions.DOWN) {
             setDirection(Directions.UP);
             return;
@@ -103,9 +59,10 @@ export default function SnakeGame({ width, height }: SnakeGameProps) {
         }
     }
 
-    const snakeEat = (snakeHead: Position) => {
+    const snakeEat = (snakeBody: Position[]) => {
+        const snakeHead: Position = snakeBody[0];
         let newFoodPosition: Position = getRandomPosition(width, height);
-        while (snakeState.includes(newFoodPosition) || foodState === newFoodPosition) {
+        while (snakeBody.includes(newFoodPosition)) {
             newFoodPosition = getRandomPosition(width, height);
         }
         setFoodState(newFoodPosition);
@@ -134,7 +91,7 @@ export default function SnakeGame({ width, height }: SnakeGameProps) {
                     setGameOver(true);
                 }
                 if (snakeIsEating(newSnakeHeadUp, foodState)) {
-                    snakeEat(newSnakeHeadUp);
+                    snakeEat(newSnakeUp);
                 } else {
                     const newSnakeTail = newSnakeUp[newSnakeUp.length - 1];
                     setSnakeState
@@ -154,7 +111,7 @@ export default function SnakeGame({ width, height }: SnakeGameProps) {
                     setGameOver(true);
                 }
                 if (snakeIsEating(newSnakeHeadDown, foodState)) {
-                    snakeEat(newSnakeHeadDown);
+                    snakeEat(newSnakeDown);
                 } else {
                     const newSnakeTail = newSnakeDown[newSnakeDown.length - 1];
                     setTableState({
@@ -173,7 +130,7 @@ export default function SnakeGame({ width, height }: SnakeGameProps) {
                     setGameOver(true);
                 }
                 if (snakeIsEating(newSnakeHeadLeft, foodState)) {
-                    snakeEat(newSnakeHeadLeft);
+                    snakeEat(newSnakeLeft);
                 } else {
                     const newSnakeTail = newSnakeLeft[newSnakeLeft.length - 1];
                     setTableState({
@@ -192,7 +149,7 @@ export default function SnakeGame({ width, height }: SnakeGameProps) {
                     setGameOver(true);
                 }
                 if (snakeIsEating(newSnakeHeadRight, foodState)) {
-                    snakeEat(newSnakeHeadRight);
+                    snakeEat(newSnakeRight);
                 } else {
                     const newSnakeTail = newSnakeRight[newSnakeRight.length - 1];
                     setTableState({
@@ -214,19 +171,21 @@ export default function SnakeGame({ width, height }: SnakeGameProps) {
         return () => {
             clearInterval(tick);
         }
-    }, [direction, tableState, score]);
+    }, [direction, tableState]);
 
     useEffect(() => {
         setInitialState();
         window.addEventListener('keydown', handleKeyDown);
+        disableBodyScroll(document);
         return () => {
             window.removeEventListener('keydown', handleKeyDown);
         }
     }, []);
 
     useEffect(() => {
-        if (score > highScore) {
-            setHighScore(score);
+        const highScoreInt: number = parseInt(highScore);
+        if (score > highScoreInt) {
+            setHighScore(score.toString());
         }
         if (gameOver) {
             localStorage.setItem('highscore', JSON.stringify(highScore));
@@ -234,20 +193,65 @@ export default function SnakeGame({ width, height }: SnakeGameProps) {
     }, [gameOver, score]);
 
 
+    const [touchStartX, setTouchStartX] = useState<number>(0)
+    const [touchEndX, setTouchEndX] = useState<number>(0)
+    const [touchStartY, setTouchStartY] = useState<number>(0)
+    const [touchEndY, setTouchEndY] = useState<number>(0)
+
+
+    // the required distance between touchStart and touchEnd to be detected as a swipe
+    const minSwipeDistance = 20
+
+    const onTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+        e.preventDefault()
+        e.stopPropagation()
+        setTouchEndX(0) // otherwise the swipe is fired even with usual touch events
+        setTouchEndY(0)
+        setTouchStartX(e.targetTouches[0].clientX)
+        setTouchStartY(e.targetTouches[0].clientY)
+    }
+
+    const onTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+        e.preventDefault()
+        e.stopPropagation()
+        setTouchEndX(e.targetTouches[0].clientX)
+        setTouchEndY(e.targetTouches[0].clientY)
+    }
+
+    const onTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
+        e.preventDefault()
+        if (!touchStartX || !touchEndX || !touchStartY || !touchEndY) return
+        const distanceX = touchStartX - touchEndX
+        const isLeftSwipe = distanceX > minSwipeDistance
+        const isRightSwipe = distanceX < -minSwipeDistance
+        const distanceY = touchStartY - touchEndY
+        const isUpSwipe = distanceY > minSwipeDistance
+        const isDownSwipe = distanceY < -minSwipeDistance
+        if (!isLeftSwipe && !isRightSwipe && !isUpSwipe && !isDownSwipe) return
+        if (isLeftSwipe && direction !== Directions.RIGHT) {
+            setDirection(Directions.LEFT);
+        } else if (isRightSwipe && direction !== Directions.LEFT) {
+            setDirection(Directions.RIGHT);
+        } else if (isUpSwipe && direction !== Directions.DOWN) {
+            setDirection(Directions.UP);
+        } else if (isDownSwipe && direction !== Directions.UP) {
+            setDirection(Directions.DOWN);
+        }
+    }
+
     return (
-        <div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
+        <div onTouchStart={(e: React.TouchEvent<HTMLDivElement>) => { onTouchStart(e) }} onTouchMove={(e: React.TouchEvent<HTMLDivElement>) => { onTouchMove(e) }} onTouchEnd={(e: React.TouchEvent<HTMLDivElement>) => { onTouchEnd(e) }}>
             {
                 gameOver ? (
                     <div className='flex-col'>
                         <h1 className='text-error'>Game Over</h1>
                         <h3>Score: {score}</h3>
-                        {score > originalHighScore && <h4 className='text-green'>¡Nuevo Record!</h4>}
+                        {score > parseInt(originalHighScore) && <span className='text-green'>¡Nuevo Record!</span>}
                         <h3>High Score: {highScore}</h3>
-                        <button className='btn-primary' onClick={() => { window.location.reload(); }}>Retry</button>
+                        <button className='btn btn-primary' onClick={() => { window.location.reload() }}>Play Again</button>
                     </div>
                 ) : (
                     <div className='snake-container' key="snake-container">
-                        <h1 className='text-title'>Snake Game</h1>
                         <div className="cols" key="cols">
                             {[...Array(width)].map((_, j) => {
                                 return (
